@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+option go_package = "./proto";
+
+service authenticationService{
+    rpc SignUp(SignUpRequest) returns (SignUpResponse);
+    rpc Login(LoginRequest) returns (LoginResponse);
+    rpc Update(UpdateRequest) returns (UpdateResponse);
+    rpc UserProfile(EmtpyRequest) returns (UserProfileResponse);
+}
+
+message EmtpyRequest {}
+
+message UserProfileResponse{
+    string name = 1;
+    string email = 2;
+}
+
+message UpdateRequest{
+    string name = 1;
+    string email = 2;
+    string password = 3;
+}
+
+message UpdateResponse{
+
+}
+
+message SignUpRequest{
+    string name = 1;
+    string email = 2;
+    string password = 3;
+}
+
+message SignUpResponse{}
+
+message LoginRequest{
+    string email = 2;
+    string password = 3;
+}
+
+message LoginResponse{
+    string token = 1;
+}

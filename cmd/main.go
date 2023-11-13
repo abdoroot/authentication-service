@@ -1,6 +1,15 @@
 package main
 
-import "fmt"
+import (
+	"log"
+	"net"
+
+	"github.com/abdoroot/authentication-service/internal/auth"
+	"github.com/abdoroot/authentication-service/internal/database"
+	pb "github.com/abdoroot/authentication-service/proto"
+	_ "github.com/joho/godotenv/autoload"
+	"google.golang.org/grpc"
+)
 
 /*
    User Registration:
@@ -28,6 +37,33 @@ import "fmt"
 */
 
 func main() {
-	//Use goriila mux -> sql -> Posgresdb
-	fmt.Println("Hello World")
+	//connect to database
+	db, err := database.NewDB()
+	if err != nil {
+		log.Panic(err)
+	}
+
+	//migrate : use it when needed
+	/*
+		err = db.Migrate()
+		if err != nil {
+			log.Panic(err)
+		}
+	*/
+
+	//create grpcserver && auth instance
+	gs := grpc.NewServer()
+	au := auth.NewAuth(db) //auth handlers
+
+	//regiter the grpc serve and the auth instance that implement ...
+	pb.RegisterAuthenticationServiceServer(gs, au)
+
+	//create net listener
+	l, err := net.Listen("tcp", ":8080")
+	if err != nil {
+		log.Printf("Colud't listen on port 8080")
+	}
+
+	//start the grpc server
+	gs.Serve(l)
 }
