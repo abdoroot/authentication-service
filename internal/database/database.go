@@ -2,8 +2,10 @@ package database
 
 import (
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/abdoroot/authentication-service/internal/auth"
 	pb "github.com/abdoroot/authentication-service/proto"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
@@ -20,7 +22,7 @@ type DB struct {
 }
 
 func NewDB() (*DB, error) {
-	db, err := DBConnect()
+	db, err := Connect()
 	if err != nil {
 		return nil, err
 	}
@@ -29,7 +31,7 @@ func NewDB() (*DB, error) {
 	}, nil
 }
 
-func DBConnect() (*sqlx.DB, error) {
+func Connect() (*sqlx.DB, error) {
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+"password=%s dbname=%s sslmode=disable",
 		host, port, dbUsername, dbPassword, databaseName)
 	db, err := sqlx.Connect("postgres", psqlInfo)
@@ -40,9 +42,15 @@ func DBConnect() (*sqlx.DB, error) {
 }
 
 func (in *DB) Insert(req *pb.SignUpRequest) error {
-	_, err := in.db.NamedExec(`INSERT INTO users (name, email, password,created_at)
+	var err error
+	req.Password, err = auth.GetPasswordHash(req.Password)
+	if err != nil {
+		return err
+	}
+	_, err = in.db.NamedExec(`INSERT INTO users (name, email, password,created_at)
         VALUES (:name, :email,:password,:createdAt)`, req)
 	if err != nil {
+		log.Panicln(req)
 		return err
 	}
 	return nil
