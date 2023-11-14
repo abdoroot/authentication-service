@@ -33,8 +33,13 @@ func (a auth) SignUp(ctx context.Context, req *pb.SignUpRequest) (*pb.SignUpResp
 }
 
 func (a auth) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+	token, err := a.dbi.Login(req)
+	if err != nil {
+		return nil, err
+	}
+	
 	return &pb.LoginResponse{
-		Token: "jwt-token",
+		Token: token,
 	}, nil
 }
 
