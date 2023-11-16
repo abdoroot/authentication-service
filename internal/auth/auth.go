@@ -34,7 +34,7 @@ func (a auth) SignUp(ctx context.Context, req *pb.SignUpRequest) (*pb.SignUpResp
 func (a auth) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
 	token, err := a.dbi.Login(req)
 	if err != nil {
-		return nil, err
+		return nil, status.Error(codes.InvalidArgument, "error username or password")
 	}
 
 	return &pb.LoginResponse{
@@ -43,14 +43,12 @@ func (a auth) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRespons
 }
 
 func (a auth) Update(ctx context.Context, req *pb.UpdateRequest) (*pb.UpdateResponse, error) {
-	auth := IsUserAuthorized(ctx)
-	_ = auth
+	// IsUserAuthorizedWithClaim(ctx)
 	return &pb.UpdateResponse{}, nil
 }
 
 func (a auth) UserProfile(ctx context.Context, req *pb.EmtpyRequest) (*pb.UserProfileResponse, error) {
-	auth := IsUserAuthorized(ctx)
-	_ = auth
+	// IsUserAuthorizedWithClaim(ctx)
 	return &pb.UserProfileResponse{}, nil
 }
 

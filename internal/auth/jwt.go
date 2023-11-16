@@ -2,7 +2,7 @@ package auth
 
 import (
 	"context"
-	"fmt"
+	"log"
 	"time"
 
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -22,16 +22,24 @@ func GenerateToken(userId, userEmail string) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
-func IsUserAuthorized(ctx context.Context) bool {
+func IsUserAuthorizedWithClaim(ctx context.Context) (jwt.MapClaims, bool) {
 	token := ctx.Value("token")
 	if tokenString, ok := token.(string); ok {
-		_, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-			}
+		tkn, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			return []byte(secret), nil
 		})
-		return err != nil
+
+		if err != nil {
+			log.Println("error parse token")
+			return nil, false
+		}
+		//get jwt claim
+		if claims, ok := tkn.Claims.(jwt.MapClaims); ok {
+			return claims, true
+		}
+		log.Println("claims error not type of jwt.MapClaims")
+		return nil, false
 	}
-	return false
+	log.Println("token not string", token)
+	return nil, false
 }
