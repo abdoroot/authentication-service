@@ -1,7 +1,6 @@
 package auth
 
 import (
-	"context"
 	"log"
 	"time"
 
@@ -22,9 +21,8 @@ func GenerateToken(userId, userEmail string) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
-func IsUserAuthorizedWithClaim(ctx context.Context) (jwt.MapClaims, bool) {
-	token := ctx.Value("token")
-	if tokenString, ok := token.(string); ok {
+func IsUserAuthorizedWithClaim(tokenString string) (jwt.MapClaims, bool) {
+	if tokenString != "" {
 		tkn, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			return []byte(secret), nil
 		})
@@ -34,12 +32,13 @@ func IsUserAuthorizedWithClaim(ctx context.Context) (jwt.MapClaims, bool) {
 			return nil, false
 		}
 		//get jwt claim
-		if claims, ok := tkn.Claims.(jwt.MapClaims); ok {
-			return claims, true
+		claims, ok := tkn.Claims.(jwt.MapClaims)
+		if !ok {
+			log.Println("claims error: token claims are not of type jwt.MapClaims")
+			return nil, false
 		}
-		log.Println("claims error not type of jwt.MapClaims")
-		return nil, false
+		return claims, true
 	}
-	log.Println("token not string", token)
+	log.Println("Token not found")
 	return nil, false
 }

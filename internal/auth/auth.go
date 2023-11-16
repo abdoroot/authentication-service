@@ -6,6 +6,7 @@ import (
 
 	pb "github.com/abdoroot/authentication-service/proto"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
 
@@ -21,7 +22,7 @@ func NewAuth(dbi *DB) *auth {
 }
 
 func (a auth) SignUp(ctx context.Context, req *pb.SignUpRequest) (*pb.SignUpResponse, error) {
-	if !a.validate(req) {
+	if !a.validateSignUp(req) {
 		return nil, status.Errorf(codes.InvalidArgument, "Input validation error")
 	}
 	err := a.dbi.Insert(req)
@@ -43,8 +44,22 @@ func (a auth) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRespons
 }
 
 func (a auth) Update(ctx context.Context, req *pb.UpdateRequest) (*pb.UpdateResponse, error) {
-	// IsUserAuthorizedWithClaim(ctx)
-	return &pb.UpdateResponse{}, nil
+	md, _ := metadata.FromIncomingContext(ctx)
+	token := ""
+	if t, ok := md["token"]; ok {
+		token = t[0] //slice
+	}
+	claims, auth := IsUserAuthorizedWithClaim(token)
+	if auth {
+		//update opration
+		//todo validate inputs
+		if err := a.dbi.Update(req, claims); err != nil {
+			return &pb.UpdateResponse{}, status.Error(codes.Internal, "update error!")
+		}
+		//updated
+		return &pb.UpdateResponse{}, status.Error(codes.OK, "updated Succesfully")
+	}
+	return &pb.UpdateResponse{}, status.Error(codes.Unauthenticated, "Unauthenticated")
 }
 
 func (a auth) UserProfile(ctx context.Context, req *pb.EmtpyRequest) (*pb.UserProfileResponse, error) {
@@ -52,7 +67,7 @@ func (a auth) UserProfile(ctx context.Context, req *pb.EmtpyRequest) (*pb.UserPr
 	return &pb.UserProfileResponse{}, nil
 }
 
-func (a auth) validate(req *pb.SignUpRequest) bool {
+func (a auth) validateSignUp(req *pb.SignUpRequest) bool {
 	if req.Name == "" || req.Email == "" || req.Password == "" {
 		return false
 	}

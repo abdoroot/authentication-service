@@ -6,6 +6,7 @@ import (
 	"os"
 
 	pb "github.com/abdoroot/authentication-service/proto"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
@@ -85,6 +86,30 @@ func (in *DB) Login(req *pb.LoginRequest) (string, error) {
 		return GenerateToken(lg.UserId, lg.Email)
 	}
 	return "", fmt.Errorf("some thing went wrong")
+}
+
+func (in *DB) Update(req *pb.UpdateRequest, claims jwt.MapClaims) error {
+	userId := claims["user_id"].(string)
+	name := req.Name
+	if req.Password != "" {
+		password, err := GetPasswordHash(req.Password)
+		if err != nil {
+			return err
+		}
+		_, err = in.db.Exec(`update users set name=$1,password=$2 where id=$3`, name, password, userId)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	} else {
+		//password empty
+		_, err := in.db.Exec(`update users set name=$1,password=$1 where id=$2`, name, userId)
+		if err != nil {
+			log.Println(err)
+			return err
+		}
+	}
+	return nil
 }
 
 func (in *DB) Migrate() error {

@@ -18,7 +18,7 @@ message UserProfileResponse{
 
 message UpdateRequest{
     string name = 1;
-    string email = 2;
+   // string email = 2; not changeable
     string password = 3;
 }
 
