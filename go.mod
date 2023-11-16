@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.1.0 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
 	golang.org/x/crypto v0.15.0 // indirect
 	golang.org/x/net v0.14.0 // indirect

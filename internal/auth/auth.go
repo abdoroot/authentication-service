@@ -4,18 +4,17 @@ import (
 	"context"
 	"net/mail"
 
-	"github.com/abdoroot/authentication-service/internal/database"
 	pb "github.com/abdoroot/authentication-service/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
 type auth struct {
-	dbi *database.DB //datbase package instant
+	dbi *DB //datbase package instant
 	pb.UnimplementedAuthenticationServiceServer
 }
 
-func NewAuth(dbi *database.DB) *auth {
+func NewAuth(dbi *DB) *auth {
 	return &auth{
 		dbi: dbi,
 	}
@@ -37,7 +36,7 @@ func (a auth) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginRespons
 	if err != nil {
 		return nil, err
 	}
-	
+
 	return &pb.LoginResponse{
 		Token: token,
 	}, nil

@@ -1,4 +1,4 @@
-package database
+package auth
 
 import (
 	"fmt"
@@ -8,7 +8,6 @@ import (
 	pb "github.com/abdoroot/authentication-service/proto"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	"golang.org/x/crypto/bcrypt"
 )
 
 var host string = os.Getenv("DB_HOST")
@@ -25,6 +24,7 @@ type DB struct {
 }
 
 type loginRequest struct {
+	UserId   string `db:"id"`
 	Email    string `db:"email"`
 	Password string `db:"password"`
 }
@@ -74,7 +74,7 @@ func (in *DB) Insert(req *pb.SignUpRequest) error {
 
 func (in *DB) Login(req *pb.LoginRequest) (string, error) {
 	lg := loginRequest{}
-	err := in.db.Get(&lg, `select email,password from users where email=$1`, req.Email)
+	err := in.db.Get(&lg, `select id,email,password from users where email=$1`, req.Email)
 
 	if err != nil {
 		log.Println(lg)
@@ -82,7 +82,7 @@ func (in *DB) Login(req *pb.LoginRequest) (string, error) {
 	}
 	//Compare hash with the password
 	if IsHashEqPass(lg.Password, req.Password) {
-		return "genratedJwtToke", nil
+		return GenerateToken(lg.UserId, lg.Email)
 	}
 	return "", fmt.Errorf("some thing went wrong")
 }
@@ -100,14 +100,4 @@ func (in *DB) Migrate() error {
 	`
 	_, err := in.db.Exec(qu)
 	return err
-}
-
-func GetPasswordHash(pass string) (string, error) {
-	hash, err := bcrypt.GenerateFromPassword([]byte(pass), bcrypt.DefaultCost)
-	return string(hash), err
-}
-
-func IsHashEqPass(hash string, pass string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(pass))
-	return err == nil
 }

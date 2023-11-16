@@ -5,7 +5,6 @@ import (
 	"net"
 
 	"github.com/abdoroot/authentication-service/internal/auth"
-	"github.com/abdoroot/authentication-service/internal/database"
 	pb "github.com/abdoroot/authentication-service/proto"
 	_ "github.com/joho/godotenv/autoload"
 	"google.golang.org/grpc"
@@ -38,7 +37,7 @@ import (
 
 func main() {
 	//connect to database
-	db, err := database.NewDB()
+	db, err := auth.NewDB()
 	if err != nil {
 		log.Panic(err)
 	}
