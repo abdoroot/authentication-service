@@ -33,3 +33,6 @@ func TestIsUserAuthorizedWithClaim(t *testing.T) {
 	}
 
 }
+
+func TestRefreshToken(t *testing.T) {
+}

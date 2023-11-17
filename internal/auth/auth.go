@@ -6,6 +6,7 @@ import (
 	"net/mail"
 
 	pb "github.com/abdoroot/authentication-service/proto"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -34,13 +35,15 @@ func (a auth) SignUp(ctx context.Context, req *pb.SignUpRequest) (*pb.SignUpResp
 }
 
 func (a auth) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
-	token, err := a.dbi.Login(req)
+	tmp, err := a.dbi.Login(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "error username or password")
 	}
 
+	t, rt := tmp["access_token"], tmp["refresh_token"]
 	return &pb.LoginResponse{
-		Token: token,
+		AccessToken:  t,
+		RefreshToken: rt,
 	}, nil
 }
 
@@ -96,4 +99,9 @@ func (a auth) validateSignUp(req *pb.SignUpRequest) bool {
 		return false
 	}
 	return true
+}
+
+func AuthUInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+	log.Println("Unary interceptor/middleware invoked,", info)
+	return handler(ctx, req)
 }

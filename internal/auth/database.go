@@ -17,6 +17,9 @@ var databaseName string = os.Getenv("DB_DATABASE")
 var dbUsername string = os.Getenv("DB_USERNAME")
 var dbPassword string = os.Getenv("DB_PASSWORD")
 
+// glopal DB
+var gdb *sqlx.DB
+
 // map use to
 var dataMp map[string]any
 
@@ -24,7 +27,7 @@ type DB struct {
 	db *sqlx.DB
 }
 
-type loginRequest struct {
+type User struct {
 	UserId   string `db:"id"`
 	Email    string `db:"email"`
 	Password string `db:"password"`
@@ -40,6 +43,10 @@ func NewDB() (*DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	//set the global db
+	gdb = db
+
 	return &DB{
 		db: db,
 	}, nil
@@ -78,19 +85,19 @@ func (in *DB) Insert(req *pb.SignUpRequest) error {
 	return nil
 }
 
-func (in *DB) Login(req *pb.LoginRequest) (string, error) {
-	lg := loginRequest{}
-	err := in.db.Get(&lg, `select id,email,password from users where email=$1`, req.Email)
+func (in *DB) Login(req *pb.LoginRequest) (map[string]string, error) {
+	usr := User{}
+	err := in.db.Get(&usr, `select id,email,password from users where email=$1`, req.Email)
 
 	if err != nil {
-		log.Println(lg)
-		return "", err
+		log.Println(usr)
+		return nil, err
 	}
 	//Compare hash with the password
-	if IsHashEqPass(lg.Password, req.Password) {
-		return GenerateToken(lg.UserId, lg.Email)
+	if IsHashEqPass(usr.Password, req.Password) {
+		return GenerateToken(usr.UserId, usr.Email)
 	}
-	return "", fmt.Errorf("some thing went wrong")
+	return nil, fmt.Errorf("some thing went wrong")
 }
 
 func (in *DB) Update(req *pb.UpdateRequest, claims jwt.MapClaims) error {
@@ -126,6 +133,18 @@ func (in *DB) GetProfile(claims jwt.MapClaims) (*GetProfileResponse, error) {
 		return nil, err
 	}
 	return gr, nil
+}
+
+func FindUserById(id string) (*User, error) {
+	usr := &User{}
+	err := gdb.Get(usr, `select id,email from users where id=$1`, id)
+
+	if err != nil {
+		log.Println(usr)
+		return nil, err
+	}
+
+	return usr, nil
 }
 
 func (in *DB) Migrate() error {
