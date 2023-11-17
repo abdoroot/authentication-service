@@ -30,6 +30,11 @@ type loginRequest struct {
 	Password string `db:"password"`
 }
 
+type GetProfileResponse struct {
+	Email string `db:"email"`
+	Name  string `db:"name"`
+}
+
 func NewDB() (*DB, error) {
 	db, err := Connect()
 	if err != nil {
@@ -103,13 +108,24 @@ func (in *DB) Update(req *pb.UpdateRequest, claims jwt.MapClaims) error {
 		}
 	} else {
 		//password empty
-		_, err := in.db.Exec(`update users set name=$1,password=$1 where id=$2`, name, userId)
+		log.Println("password empty")
+		_, err := in.db.Exec(`update users set name=$1 where id=$2`, name, userId)
 		if err != nil {
 			log.Println(err)
 			return err
 		}
 	}
 	return nil
+}
+
+func (in *DB) GetProfile(claims jwt.MapClaims) (*GetProfileResponse, error) {
+	userId := claims["user_id"].(string)
+	gr := &GetProfileResponse{}
+	err := in.db.Get(gr, `select name,email from users where id=$1`, userId)
+	if err != nil {
+		return nil, err
+	}
+	return gr, nil
 }
 
 func (in *DB) Migrate() error {
