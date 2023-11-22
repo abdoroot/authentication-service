@@ -17,7 +17,7 @@ func main() {
 	//connect to database
 	db, err := auth.InitDB()
 	if err != nil {
-		log.Panic(err)
+		log.Fatal(err)
 	}
 
 	//migrate : use it when needed

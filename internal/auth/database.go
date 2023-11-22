@@ -35,10 +35,11 @@ type GetProfileResponse struct {
 }
 
 func InitDB() (*sqlx.DB, error) {
-	db, err := Connect()
+	d, err := Connect()
 	if err != nil {
 		return nil, err
 	}
+	db = d
 	return db, nil
 }
 
@@ -76,13 +77,14 @@ func DbInsert(req *pb.SignUpRequest) error {
 }
 
 func DbLogin(req *pb.LoginRequest) (map[string]string, error) {
-	usr := User{}
-	err := db.Get(&usr, `select id,email,password from users where email=$1`, req.Email)
+	usr := &User{}
+	err := db.Get(usr, `select id,email,password from users where email=$1`, req.Email)
 
 	if err != nil {
-		log.Println(usr)
 		return nil, err
 	}
+	log.Println(usr)
+
 	//Compare hash with the password
 	if IsHashEqPass(usr.Password, req.Password) {
 		return GenerateToken(usr.UserId, usr.Email)
