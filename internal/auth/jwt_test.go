@@ -34,5 +34,11 @@ func TestIsUserAuthorizedWithClaim(t *testing.T) {
 
 }
 
-func TestRefreshToken(t *testing.T) {
+func TestRefreshAccessToken(t *testing.T) {
+	rt := "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDA3Njk3NDIsInVzZXJfaWQiOiIyMCJ9.aG5VNBnhJwhScs-S-k0ztHe9T2o7_gK4OfFw4n7j68w"
+	nrt, err := RefreshAccessToken(rt)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Error(nrt)
 }

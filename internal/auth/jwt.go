@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	db                   string = "jwts-screct-code@123.."
 	secret               string = "jwts-screct-code@123.."
 	tokenLifespan        int    = 3  //h
 	refreshTokenLifespan int    = 24 //h
@@ -70,19 +69,19 @@ func IsUserAuthorizedWithClaim(accessToken string) (jwt.MapClaims, bool) {
 	return nil, false
 }
 
-func RefreshToken(refreshToken string) (map[string]string, error) {
+func RefreshAccessToken(refreshToken string) (string, error) {
 	if refreshToken != "" {
 		tkn, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
 			return []byte(secret), nil
 		})
 		if err != nil {
-			return nil, fmt.Errorf("error parse accessToken")
+			return "", fmt.Errorf("error parse accessToken")
 		}
 
 		//get jwt claim
 		claims, ok := tkn.Claims.(jwt.MapClaims)
 		if !ok {
-			return nil, fmt.Errorf("claims error: token claims are not of type jwt.MapClaims")
+			return "", fmt.Errorf("claims error: token claims are not of type jwt.MapClaims")
 		}
 
 		//parse user_id
@@ -90,13 +89,35 @@ func RefreshToken(refreshToken string) (map[string]string, error) {
 			//get user data
 			user, err := FindUserById(userId.(string))
 			if err != nil {
-				return nil, err
+				return "", err
 			}
 			//generate new token and refresh token
-			return GenerateToken(user.UserId, user.Email)
+			mp, err := GenerateToken(user.UserId, user.Email)
+			if err != nil {
+				return "", err
+			}
+			if rt, ok := mp["refresh_token"]; ok {
+				return rt, nil
+			}
+			return "", err
 		}
 
-		return nil, fmt.Errorf("unknowow error")
+		return "", fmt.Errorf("unknowow error")
 	}
-	return nil, fmt.Errorf("accessToken empty")
+	return "", fmt.Errorf("refreshToken empty")
+}
+
+func CheckTokenExpiry(tokenString string) bool {
+	token, _ := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		return []byte(secret), nil
+	})
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return false
+	}
+
+	expirationTime := time.Unix(int64(claims["exp"].(float64)), 0)
+	// 20 minutes threshold before expiration
+	return time.Until(expirationTime) < 20*time.Minute
 }

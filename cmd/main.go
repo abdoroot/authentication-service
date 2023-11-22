@@ -15,7 +15,7 @@ import (
 
 func main() {
 	//connect to database
-	db, err := auth.NewDB()
+	db, err := auth.InitDB()
 	if err != nil {
 		log.Panic(err)
 	}

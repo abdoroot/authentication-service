@@ -6,6 +6,7 @@ import (
 	"net/mail"
 
 	pb "github.com/abdoroot/authentication-service/proto"
+	"github.com/jmoiron/sqlx"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -13,11 +14,11 @@ import (
 )
 
 type auth struct {
-	dbi *DB //datbase package instant
+	dbi *sqlx.DB //datbase package instant
 	pb.UnimplementedAuthenticationServiceServer
 }
 
-func NewAuth(dbi *DB) *auth {
+func NewAuth(dbi *sqlx.DB) *auth {
 	return &auth{
 		dbi: dbi,
 	}
@@ -27,7 +28,7 @@ func (a auth) SignUp(ctx context.Context, req *pb.SignUpRequest) (*pb.SignUpResp
 	if !a.validateSignUp(req) {
 		return nil, status.Errorf(codes.InvalidArgument, "Input validation error")
 	}
-	err := a.dbi.Insert(req)
+	err := DbInsert(req)
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +36,7 @@ func (a auth) SignUp(ctx context.Context, req *pb.SignUpRequest) (*pb.SignUpResp
 }
 
 func (a auth) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
-	tmp, err := a.dbi.Login(req)
+	tmp, err := DbLogin(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, "error username or password")
 	}
@@ -54,7 +55,7 @@ func (a auth) Update(ctx context.Context, req *pb.UpdateRequest) (*pb.UpdateResp
 		//update opration
 		//todo validate inputs
 		log.Println("Auth user")
-		if err := a.dbi.Update(req, claims); err != nil {
+		if err := DbUpdate(req, claims); err != nil {
 			return &pb.UpdateResponse{}, status.Error(codes.Internal, "update error!")
 		}
 		//updated
@@ -69,7 +70,7 @@ func (a auth) UserProfile(ctx context.Context, req *pb.EmtpyRequest) (*pb.UserPr
 	if auth {
 		//update opration
 		//todo validate inputs
-		resp, err := a.dbi.GetProfile(claims)
+		resp, err := DbGetProfile(claims)
 		if err != nil {
 			return &pb.UserProfileResponse{}, status.Error(codes.Internal, "get profile error!")
 		}
@@ -85,7 +86,7 @@ func (a auth) UserProfile(ctx context.Context, req *pb.EmtpyRequest) (*pb.UserPr
 func parseToken(ctx context.Context) string {
 	md, _ := metadata.FromIncomingContext(ctx)
 	token := ""
-	if t, ok := md["token"]; ok {
+	if t, ok := md["access_token"]; ok {
 		token = t[0] //slice
 	}
 	return token

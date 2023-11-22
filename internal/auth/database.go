@@ -18,14 +18,10 @@ var dbUsername string = os.Getenv("DB_USERNAME")
 var dbPassword string = os.Getenv("DB_PASSWORD")
 
 // glopal DB
-var gdb *sqlx.DB
+var db *sqlx.DB
 
 // map use to
 var dataMp map[string]any
-
-type DB struct {
-	db *sqlx.DB
-}
 
 type User struct {
 	UserId   string `db:"id"`
@@ -38,18 +34,12 @@ type GetProfileResponse struct {
 	Name  string `db:"name"`
 }
 
-func NewDB() (*DB, error) {
+func InitDB() (*sqlx.DB, error) {
 	db, err := Connect()
 	if err != nil {
 		return nil, err
 	}
-
-	//set the global db
-	gdb = db
-
-	return &DB{
-		db: db,
-	}, nil
+	return db, nil
 }
 
 func Connect() (*sqlx.DB, error) {
@@ -62,7 +52,7 @@ func Connect() (*sqlx.DB, error) {
 	return db, nil
 }
 
-func (in *DB) Insert(req *pb.SignUpRequest) error {
+func DbInsert(req *pb.SignUpRequest) error {
 	var err error
 
 	dataMp = make(map[string]any)
@@ -76,7 +66,7 @@ func (in *DB) Insert(req *pb.SignUpRequest) error {
 	}
 
 	//insert data to db
-	_, err = in.db.NamedExec(`INSERT INTO users (name, email, password)
+	_, err = db.NamedExec(`INSERT INTO users (name, email, password)
         VALUES (:name,:email,:password)`, dataMp)
 	if err != nil {
 		log.Println("Err Insert data to db :", req, err)
@@ -85,9 +75,9 @@ func (in *DB) Insert(req *pb.SignUpRequest) error {
 	return nil
 }
 
-func (in *DB) Login(req *pb.LoginRequest) (map[string]string, error) {
+func DbLogin(req *pb.LoginRequest) (map[string]string, error) {
 	usr := User{}
-	err := in.db.Get(&usr, `select id,email,password from users where email=$1`, req.Email)
+	err := db.Get(&usr, `select id,email,password from users where email=$1`, req.Email)
 
 	if err != nil {
 		log.Println(usr)
@@ -100,7 +90,7 @@ func (in *DB) Login(req *pb.LoginRequest) (map[string]string, error) {
 	return nil, fmt.Errorf("some thing went wrong")
 }
 
-func (in *DB) Update(req *pb.UpdateRequest, claims jwt.MapClaims) error {
+func DbUpdate(req *pb.UpdateRequest, claims jwt.MapClaims) error {
 	userId := claims["user_id"].(string)
 	name := req.Name
 	if req.Password != "" {
@@ -108,7 +98,7 @@ func (in *DB) Update(req *pb.UpdateRequest, claims jwt.MapClaims) error {
 		if err != nil {
 			return err
 		}
-		_, err = in.db.Exec(`update users set name=$1,password=$2 where id=$3`, name, password, userId)
+		_, err = db.Exec(`update users set name=$1,password=$2 where id=$3`, name, password, userId)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -116,7 +106,7 @@ func (in *DB) Update(req *pb.UpdateRequest, claims jwt.MapClaims) error {
 	} else {
 		//password empty
 		log.Println("password empty")
-		_, err := in.db.Exec(`update users set name=$1 where id=$2`, name, userId)
+		_, err := db.Exec(`update users set name=$1 where id=$2`, name, userId)
 		if err != nil {
 			log.Println(err)
 			return err
@@ -125,10 +115,10 @@ func (in *DB) Update(req *pb.UpdateRequest, claims jwt.MapClaims) error {
 	return nil
 }
 
-func (in *DB) GetProfile(claims jwt.MapClaims) (*GetProfileResponse, error) {
+func DbGetProfile(claims jwt.MapClaims) (*GetProfileResponse, error) {
 	userId := claims["user_id"].(string)
 	gr := &GetProfileResponse{}
-	err := in.db.Get(gr, `select name,email from users where id=$1`, userId)
+	err := db.Get(gr, `select name,email from users where id=$1`, userId)
 	if err != nil {
 		return nil, err
 	}
@@ -136,8 +126,9 @@ func (in *DB) GetProfile(claims jwt.MapClaims) (*GetProfileResponse, error) {
 }
 
 func FindUserById(id string) (*User, error) {
+	log.Println(id)
 	usr := &User{}
-	err := gdb.Get(usr, `select id,email from users where id=$1`, id)
+	err := db.Get(usr, `select id,email from users where id=$1`, id)
 
 	if err != nil {
 		log.Println(usr)
@@ -147,7 +138,7 @@ func FindUserById(id string) (*User, error) {
 	return usr, nil
 }
 
-func (in *DB) Migrate() error {
+func DbMigrate() error {
 	qu := `CREATE TABLE users (
 		id SERIAL PRIMARY KEY,
 		name VARCHAR(255) NOT NULL,
@@ -158,6 +149,6 @@ func (in *DB) Migrate() error {
 	ALTER TABLE users
     ADD CONSTRAINT unique_email UNIQUE (email);
 	`
-	_, err := in.db.Exec(qu)
+	_, err := db.Exec(qu)
 	return err
 }

@@ -12,7 +12,9 @@ import (
 )
 
 var (
-	Token string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDAyMTU4NDgsInVzZXJfZW1haWwiOiJhYmQuMjAwOTMwQGdtYWlsLmNvbSIsInVzZXJfaWQiOiIyMCJ9.XyS44pR-tom02j5ByjXzloGOjKfKF8qaDSrTHpoQX6s"
+	Atoken string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDAyMTU4NDgsInVzZXJfZW1haWwiOiJhYmQuMjAwOTMwQGdtYWlsLmNvbSIsInVzZXJfaWQiOiIyMCJ9.XyS44pR-tom02j5ByjXzloGOjKfKF8qaDSrTHpoQX6s"
+
+	rToken string = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDA3Njk3NDIsInVzZXJfaWQiOiIyMCJ9.aG5VNBnhJwhScs-S-k0ztHe9T2o7_gK4OfFw4n7j68w"
 
 	Server string = "localhost:8080"
 
@@ -32,7 +34,7 @@ func TestUpdate(t *testing.T) {
 	// Create a context with the token value using context.WithValue
 	ctx := metadata.NewOutgoingContext(
 		context.Background(),
-		metadata.Pairs("token", Token),
+		metadata.Pairs("access_token", Atoken),
 	)
 	resp, err := c.Update(ctx, &pb.UpdateRequest{
 		Name: "Abdelhadi Mohammed",
@@ -48,7 +50,7 @@ func TestGetProfile(t *testing.T) {
 	// Create a context with the token value using context.WithValue
 	ctx := metadata.NewOutgoingContext(
 		context.Background(),
-		metadata.Pairs("token", Token),
+		metadata.Pairs("access_token", Atoken),
 	)
 	resp, err := c.UserProfile(ctx, &pb.EmtpyRequest{})
 	if err != nil {
@@ -57,4 +59,18 @@ func TestGetProfile(t *testing.T) {
 	if resp.Name == "" && resp.Email == "" {
 		t.Error("error getting data from db")
 	}
+}
+
+func TestAcessToken(t *testing.T) {
+	c := pb.NewAuthenticationServiceClient(Conn)
+	// Create a context with the token value using context.WithValue
+	ctx := metadata.NewOutgoingContext(
+		context.Background(),
+		metadata.Pairs("access_token", Atoken, "refresh_token", rToken),
+	)
+	resp, err := c.UserProfile(ctx, &pb.EmtpyRequest{})
+	if err != nil {
+		t.Error(err)
+	}
+	_ = resp
 }
