@@ -1,46 +1,38 @@
 package main
 
 import (
+	"fmt"
 	"log"
-	"net"
+	"os"
 
 	"github.com/abdoroot/authentication-service/internal/auth"
-	pb "github.com/abdoroot/authentication-service/proto"
+	"github.com/abdoroot/authentication-service/internal/store"
+	"github.com/abdoroot/authentication-service/internal/transport"
+	"github.com/jmoiron/sqlx"
 	_ "github.com/joho/godotenv/autoload"
-	"google.golang.org/grpc"
+	_ "github.com/lib/pq"
 )
 
-//todo Handle token expiration and refresh if necessary
-//todo refactor DB remove the glopal db
+var (
+	srv            store.Storer
+	host           string = os.Getenv("DB_HOST")
+	port           string = os.Getenv("DB_PORT")
+	databaseName   string = os.Getenv("DB_DATABASE")
+	dbUsername     string = os.Getenv("DB_USERNAME")
+	dbPassword     string = os.Getenv("DB_PASSWORD")
+	httpListenAddr string = ":3000"
+)
 
 func main() {
-	//connect to database
-	db, err := auth.InitDB()
+	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s "+"password=%s dbname=%s sslmode=disable",
+		host, port, dbUsername, dbPassword, databaseName)
+	db, err := sqlx.Connect("postgres", psqlInfo)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("db: ", err)
 	}
 
-	//migrate : use it when needed
-	/*
-		err = db.Migrate()
-		if err != nil {
-			log.Panic(err)
-		}
-	*/
-
-	//create grpcserver && auth instance
-	gs := grpc.NewServer(grpc.UnaryInterceptor(auth.AuthUInterceptor)) //grpc.UnaryInterceptor()//grpc middleware
-	au := auth.NewAuth(db)                                             //auth handlers
-
-	//regiter the grpc serve and the auth instance that implement ...
-	pb.RegisterAuthenticationServiceServer(gs, au)
-
-	//create net listener
-	l, err := net.Listen("tcp", ":8080")
-	if err != nil {
-		log.Printf("Colud't listen on port 8080")
-	}
-
-	//start the grpc server
-	gs.Serve(l)
+	pqStore := store.NewUserStore(db)
+	srv := auth.NewAuth(pqStore)
+	ht := transport.NewHttpTransport(srv, httpListenAddr)
+	ht.Strart()
 }

@@ -2,107 +2,55 @@ package auth
 
 import (
 	"context"
-	"log"
-	"net/mail"
 
-	pb "github.com/abdoroot/authentication-service/proto"
-	"github.com/jmoiron/sqlx"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
+	"github.com/abdoroot/authentication-service/internal/store"
+	"github.com/abdoroot/authentication-service/internal/types"
 )
 
-type auth struct {
-	dbi *sqlx.DB //datbase package instant
-	pb.UnimplementedAuthenticationServiceServer
+type Auth struct {
+	Store store.Storer
 }
 
-func NewAuth(dbi *sqlx.DB) *auth {
-	return &auth{
-		dbi: dbi,
+func NewAuth(store store.Storer) *Auth {
+	return &Auth{
+		Store: store,
 	}
 }
 
-func (a auth) SignUp(ctx context.Context, req *pb.SignUpRequest) (*pb.SignUpResponse, error) {
-	if !a.validateSignUp(req) {
-		return nil, status.Errorf(codes.InvalidArgument, "Input validation error")
-	}
-	err := DbInsert(req)
+func (a *Auth) SignUp(ctx context.Context, user *types.User) (*types.User, error) {
+	createUser, err := a.Store.CreateUser(ctx, user)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.SignUpResponse{}, nil
+	return createUser, nil
 }
 
-func (a auth) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
-	tmp, err := DbLogin(req)
+func (a *Auth) Login(ctx context.Context, param *types.LoginParam) (*types.User, error) {
+	user, err := a.Store.GetUserByEmailPassword(ctx, param.Email, param.Password)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "error username or password")
+		return nil, err
 	}
-
-	t, rt := tmp["access_token"], tmp["refresh_token"]
-	return &pb.LoginResponse{
-		AccessToken:  t,
-		RefreshToken: rt,
-	}, nil
+	return user, nil
 }
 
-func (a auth) Update(ctx context.Context, req *pb.UpdateRequest) (*pb.UpdateResponse, error) {
-	token := parseToken(ctx)
-	claims, auth := IsUserAuthorizedWithClaim(token)
-	if auth {
-		//update opration
-		//todo validate inputs
-		log.Println("Auth user")
-		if err := DbUpdate(req, claims); err != nil {
-			return &pb.UpdateResponse{}, status.Error(codes.Internal, "update error!")
-		}
-		//updated
-		return &pb.UpdateResponse{}, status.Error(codes.OK, "updated Succesfully")
+func (a *Auth) Update(ctx context.Context, user *types.User) (*types.User, error) {
+	//update opration
+	//todo validate inputs
+	user, err := a.Store.UpdateUser(context.Background(), user)
+	if err != nil {
+		return nil, err
 	}
-	return &pb.UpdateResponse{}, status.Error(codes.Unauthenticated, "Unauthenticated")
+	//updated
+	return user, nil
 }
 
-func (a auth) UserProfile(ctx context.Context, req *pb.EmtpyRequest) (*pb.UserProfileResponse, error) {
-	token := parseToken(ctx)
-	claims, auth := IsUserAuthorizedWithClaim(token)
-	if auth {
-		//update opration
-		//todo validate inputs
-		resp, err := DbGetProfile(claims)
-		if err != nil {
-			return &pb.UserProfileResponse{}, status.Error(codes.Internal, "get profile error!")
-		}
-		//retrive
-		return &pb.UserProfileResponse{
-			Name:  resp.Name,
-			Email: resp.Email,
-		}, status.Error(codes.OK, "Retrieve Succesfully")
+func (a Auth) UserProfile(ctx context.Context, id string) (*types.User, error) {
+	//update opration
+	//todo validate inputs
+	user, err := a.Store.GetUserById(ctx, id)
+	if err != nil {
+		return nil, err
 	}
-	return &pb.UserProfileResponse{}, status.Error(codes.Unauthenticated, "Unauthenticated")
-}
-
-func parseToken(ctx context.Context) string {
-	md, _ := metadata.FromIncomingContext(ctx)
-	token := ""
-	if t, ok := md["access_token"]; ok {
-		token = t[0] //slice
-	}
-	return token
-}
-
-func (a auth) validateSignUp(req *pb.SignUpRequest) bool {
-	if req.Name == "" || req.Email == "" || req.Password == "" {
-		return false
-	}
-	if _, err := mail.ParseAddress(req.Email); err != nil {
-		return false
-	}
-	return true
-}
-
-func AuthUInterceptor(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-	log.Println("Unary interceptor/middleware invoked,", info)
-	return handler(ctx, req)
+	//retrive
+	return user, nil
 }

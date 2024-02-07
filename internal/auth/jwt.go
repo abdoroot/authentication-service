@@ -86,8 +86,11 @@ func RefreshAccessToken(refreshToken string) (string, error) {
 
 		//parse user_id
 		if userId, ok := claims["user_id"]; ok {
+			_ = userId
 			//get user data
-			user, err := FindUserById(userId.(string))
+			user, err := struct {
+				UserId, Email string
+			}{}, err
 			if err != nil {
 				return "", err
 			}
