@@ -21,6 +21,7 @@ var (
 	dbUsername     string = os.Getenv("DB_USERNAME")
 	dbPassword     string = os.Getenv("DB_PASSWORD")
 	httpListenAddr string = ":3000"
+	grpcListenAddr string = ":3001"
 )
 
 func main() {
@@ -33,6 +34,16 @@ func main() {
 
 	pqStore := store.NewUserStore(db)
 	srv := auth.NewAuth(pqStore)
-	ht := transport.NewHttpTransport(srv, httpListenAddr)
-	ht.Strart()
+
+	{
+		//http transport
+		ht := transport.NewHttpTransport(srv, httpListenAddr)
+		go ht.Strart()
+	}
+
+	{
+		//grpc transport
+		gt := transport.NewGRPCTransport(srv, grpcListenAddr)
+		gt.Strart()
+	}
 }
