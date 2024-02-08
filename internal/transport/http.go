@@ -30,7 +30,8 @@ func (t *httpTransport) Strart() {
 	fmt.Printf("HttpTransport running on port%v\n", t.listenAddr)
 	t.mux.HandleFunc("/login", MakeHttpTransportHandler(t.handelPostLoginUser))
 	t.mux.HandleFunc("/user/create", MakeHttpTransportHandler(t.handelPostCreateUser))
-	t.mux.HandleFunc("/user/update", middleware.HttpLoginMiddleware(MakeHttpTransportHandler(t.handelPostUpdateUser), t.srv)) //Login middleware
+	t.mux.HandleFunc("/user/update", middleware.HttpLoginMiddleware(MakeHttpTransportHandler(t.handelPostUpdateUser), t.srv))  //Login middleware
+	t.mux.HandleFunc("/user/profile", middleware.HttpLoginMiddleware(MakeHttpTransportHandler(t.handelGetProfileUser), t.srv)) //Login middleware
 	http.ListenAndServe(t.listenAddr, t.mux)
 }
 
@@ -87,6 +88,19 @@ func (t *httpTransport) handelPostLoginUser(w http.ResponseWriter, r *http.Reque
 	WriteJson(w, http.StatusOK, map[string]any{
 		"user":  user,
 		"token": token,
+	})
+	return nil
+}
+
+func (t *httpTransport) handelGetProfileUser(w http.ResponseWriter, r *http.Request) error {
+	user := getUserFromRequestCtx(r.Context())
+	userIdString := strconv.Itoa(user.ID)
+	dbUser, err := t.srv.UserProfile(r.Context(), userIdString)
+	if err != nil {
+		return err
+	}
+	WriteJson(w, http.StatusOK, map[string]any{
+		"user":  dbUser,
 	})
 	return nil
 }

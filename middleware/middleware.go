@@ -11,7 +11,7 @@ import (
 
 func HttpLoginMiddleware(next http.HandlerFunc, srv *auth.Auth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		token := r.Header.Get("X-Api-Token")
+		token := r.Header.Get("X-Api-Key")
 		if token == "" {
 			Unauthorized(w)
 			return
